@@ -10,7 +10,8 @@ A command-line swiss army knife with diverse functionality.
 - Claude API Providers - Switch between different Claude API providers for Claude Code
 - Backup/Restore - Backup and restore directories with automatic verification (macOS/Linux)
 - Font Installation - Install custom fonts with a single command
-- macOS Utilities - Volume control and other macOS-specific tools
+- Volume Control - Cross-platform system volume control (macOS, Windows, Linux)
+- macOS Utilities - Other macOS-specific tools
 - Self-Managing - Automatically downloads and manages its own yt-dlp binary
 
 ## Installation
@@ -143,12 +144,22 @@ zzk claude reset                   # Reset to official Anthropic API
 zzk font-install dmca
 ```
 
-### macOS Utilities
+### System Volume Control
+
+Control system volume (cross-platform: macOS, Windows, Linux)
 
 ```bash
-# Control system volume (0-100)
-zzk macos vol 50
+# Set volume to default (17)
+zzk vol
+
+# Set volume to specific level (0-100)
+zzk vol 50
 ```
+
+**Platform Requirements:**
+- **macOS**: Uses AppleScript (built-in)
+- **Windows**: Uses Windows Audio API
+- **Linux**: Automatically detects PulseAudio (`pactl`) or ALSA (`amixer`)
 
 ## Development
 

@@ -18,6 +18,7 @@ Currently includes:
   - Media downloading (YouTube) with aria2c acceleration
   - Automatic screen resolution detection for video quality
   - Font installation utilities
+  - Cross-platform volume control
 
 Examples:
   zzk backup                                    # Upload .bio and get a code
@@ -29,7 +30,8 @@ Examples:
   zzk yt aud https://youtube.com/watch?v=...    # Download audio
   zzk yt alb https://youtube.com/playlist?...   # Download album/playlist
   zzk yt vid https://youtube.com/watch?v=...    # Download video
-  zzk font-install dmca                         # Install DMCA Sans Serif font`,
+  zzk font-install dmca                         # Install DMCA Sans Serif font
+  zzk vol 50                                    # Set system volume to 50`,
 }
 
 var UseTmpDir bool

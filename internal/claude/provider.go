@@ -209,20 +209,31 @@ func (p *Provider) ToShellExports() string {
 	fmt.Fprintf(&buf, "export ANTHROPIC_BASE_URL=%q\n", p.BaseURL)
 	fmt.Fprintf(&buf, "export ANTHROPIC_AUTH_TOKEN=%q\n", p.APIToken)
 
+	// Model variables: either set them or unset them to clear previous values
 	if p.OpusModel != "" {
 		fmt.Fprintf(&buf, "export ANTHROPIC_DEFAULT_OPUS_MODEL=%q\n", p.OpusModel)
+	} else {
+		buf.WriteString("unset ANTHROPIC_DEFAULT_OPUS_MODEL\n")
 	}
 	if p.SonnetModel != "" {
 		fmt.Fprintf(&buf, "export ANTHROPIC_DEFAULT_SONNET_MODEL=%q\n", p.SonnetModel)
+	} else {
+		buf.WriteString("unset ANTHROPIC_DEFAULT_SONNET_MODEL\n")
 	}
 	if p.HaikuModel != "" {
 		fmt.Fprintf(&buf, "export ANTHROPIC_DEFAULT_HAIKU_MODEL=%q\n", p.HaikuModel)
+	} else {
+		buf.WriteString("unset ANTHROPIC_DEFAULT_HAIKU_MODEL\n")
 	}
 	if p.SubagentModel != "" {
 		fmt.Fprintf(&buf, "export CLAUDE_CODE_SUBAGENT_MODEL=%q\n", p.SubagentModel)
+	} else {
+		buf.WriteString("unset CLAUDE_CODE_SUBAGENT_MODEL\n")
 	}
 	if p.DisableTelemetry {
 		buf.WriteString("export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1\n")
+	} else {
+		buf.WriteString("unset CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC\n")
 	}
 
 	return buf.String()
