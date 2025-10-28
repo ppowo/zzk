@@ -13,6 +13,13 @@ import (
 // PowerShell-based Windows volume control
 // More reliable than complex COM interface programming
 func setVolumeWindows(volume int) error {
+	// Validate and clamp volume to 0-100 range
+	if volume < 0 {
+		volume = 0
+	} else if volume > 100 {
+		volume = 100
+	}
+
 	// Use PowerShell to set volume via audio API
 	// PowerShell is available on all modern Windows systems
 	script := fmt.Sprintf(`
@@ -25,7 +32,8 @@ func setVolumeWindows(volume int) error {
 
 			public static void SetVolume(int volume) {
 				// Convert 0-100 to 0-65535 range (both left and right channels)
-				uint vol = (uint)(volume * 655.35);
+				// Use integer math to avoid precision loss
+				uint vol = (uint)(volume * 65535 / 100);
 				waveOutSetVolume(IntPtr.Zero, (vol << 16) | vol);
 			}
 		}
@@ -55,8 +63,9 @@ func getVolumeWindows() (int, error) {
 			public static int GetVolume() {
 				uint volume;
 				waveOutGetVolume(IntPtr.Zero, out volume);
-				// Extract volume from left channel (lower 16 bits)
-				return (int)((volume & 0xFFFF) / 655.35);
+				// Extract volume from left channel (lower 16 bits) and convert back to 0-100
+				// Use integer math to avoid precision loss
+				return (int)((volume & 0xFFFF) * 100 / 65535);
 			}
 		}
 		"@
@@ -70,6 +79,7 @@ func getVolumeWindows() (int, error) {
 	}
 
 	// Parse the output to get the volume value
+	// PowerShell will output the integer directly
 	volumeStr := strings.TrimSpace(string(output))
 	volume, err := strconv.Atoi(volumeStr)
 	if err != nil {
