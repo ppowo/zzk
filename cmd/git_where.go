@@ -113,9 +113,5 @@ func verifyGitConfig(identity *git.Identity) bool {
 	}
 
 	name := strings.TrimSpace(string(output))
-	if name != identity.User {
-		return false
-	}
-
-	return true
+	return name == identity.User
 }

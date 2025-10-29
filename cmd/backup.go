@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"runtime"
+	"slices"
 
 	"github.com/spf13/cobra"
 )
@@ -81,11 +82,9 @@ func init() {
 // isOSAllowed checks if the current OS is allowed for a target
 func isOSAllowed(target BackupTarget) error {
 	currentOS := runtime.GOOS
-	for _, allowedOS := range target.AllowedOS {
-		if currentOS == allowedOS {
+	if slices.Contains(target.AllowedOS, currentOS) {
 			return nil
 		}
-	}
 	return fmt.Errorf("%s backup is only supported on %v (current OS: %s)",
 		target.Name, target.AllowedOS, currentOS)
 }
