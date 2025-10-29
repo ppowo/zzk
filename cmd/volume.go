@@ -10,15 +10,6 @@ import (
 	"strconv"
 )
 
-// Windows function stubs for non-Windows platforms
-func setVolumeWindows(volume int) error {
-	return fmt.Errorf("volume control on Windows requires building for windows platform")
-}
-
-func getVolumeWindows() (int, error) {
-	return 0, fmt.Errorf("volume control on Windows requires building for windows platform")
-}
-
 // SetVolume sets the system volume to the specified level (0-100)
 // Returns the previous volume level
 func SetVolume(volume int) (int, error) {
@@ -61,7 +52,7 @@ func setVolumeMacOS(volume int) error {
 }
 
 func getVolumeMacOS() (int, error) {
-	script := fmt.Sprintf("get output volume of (get volume settings)")
+	script := "get output volume of (get volume settings)"
 	cmd := exec.Command("osascript", "-e", script)
 	output, err := cmd.Output()
 	if err != nil {

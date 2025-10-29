@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"runtime"
 	"strconv"
 
 	"github.com/spf13/cobra"
@@ -17,6 +18,10 @@ Examples:
   zzk vol 50    # Set volume to 50`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if runtime.GOOS == "windows" {
+			return fmt.Errorf("volume control is not supported on Windows")
+		}
+
 		volume := 17 // Default volume
 		isDefault := true
 
