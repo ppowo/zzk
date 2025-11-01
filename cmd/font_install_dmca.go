@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/ppowo/zzk/internal/fileutil"
@@ -35,6 +36,11 @@ func init() {
 }
 
 func installDMCAFont() error {
+	// Check if running on Linux
+	if runtime.GOOS != "linux" {
+		return fmt.Errorf("the 'dmca' font is only supported on Linux")
+	}
+
 	// Get user font directory based on OS
 	fontDir, err := font.GetUserFontDir()
 	if err != nil {
