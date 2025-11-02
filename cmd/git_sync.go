@@ -21,17 +21,16 @@ Run this command after editing ~/.git-identities.json`,
 	Run: func(cmd *cobra.Command, args []string) {
 		config, err := git.LoadConfig()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n\n", err)
-			fmt.Println("Creating example configuration...")
-			if err := git.CreateExampleConfig(); err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to create example config: %v\n", err)
-				os.Exit(1)
-			}
-			fmt.Printf("Created example config at: %s\n\n", git.ConfigPath())
-			fmt.Println("Please edit this file with your identities, then run 'zzk git sync' again.")
-			fmt.Println()
-			fmt.Println("Example identity:")
-			fmt.Println(`{
+			// Check if the config file exists
+			configPath := git.ConfigPath()
+			if _, statErr := os.Stat(configPath); statErr == nil {
+				// File exists but has errors - report them without overwriting
+				fmt.Fprintf(os.Stderr, "Error in %s:\n", configPath)
+				fmt.Fprintf(os.Stderr, "%v\n\n", err)
+				fmt.Println("Please fix the errors in the config file and run 'zzk git sync' again.")
+				fmt.Println()
+				fmt.Println("Example identity structure:")
+				fmt.Println(`{
   "identities": {
     "github-work": {
       "user": "your-username",
@@ -41,7 +40,19 @@ Run this command after editing ~/.git-identities.json`,
     }
   }
 }`)
-			os.Exit(0)
+				os.Exit(1)
+			} else {
+				// File doesn't exist - create example config
+				fmt.Fprintf(os.Stderr, "Error: %v\n\n", err)
+				fmt.Println("Creating example configuration...")
+				if err := git.CreateExampleConfig(); err != nil {
+					fmt.Fprintf(os.Stderr, "Failed to create example config: %v\n", err)
+					os.Exit(1)
+				}
+				fmt.Printf("Created example config at: %s\n\n", configPath)
+				fmt.Println("Please edit this file with your identities, then run 'zzk git sync' again.")
+				os.Exit(0)
+			}
 		}
 
 		_, err = git.Sync(config)
