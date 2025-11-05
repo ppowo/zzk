@@ -37,41 +37,8 @@ Examples:
 			return fmt.Errorf("provider '%s' not found. Use 'zzk claude ls' to list providers", providerName)
 		}
 
-		// Write env file
-		if err := claude.WriteEnvFile(provider); err != nil {
-			return fmt.Errorf("failed to write env file: %w", err)
-		}
-
-		// Update active in config
-		if err := config.SetActive(providerName); err != nil {
-			return fmt.Errorf("failed to set active provider: %w", err)
-		}
-
-		if err := claude.SaveConfig(config); err != nil {
-			return fmt.Errorf("failed to update config: %w", err)
-		}
-
-		fmt.Printf("✓ Switched to provider: %s\n", providerName)
-		fmt.Printf("  Base URL: %s\n", provider.BaseURL)
-
-		// Check if shell is in sync
-		if needsReload, warning := claude.CheckShellSync(provider.BaseURL); needsReload {
-			fmt.Println(warning)
-		}
-
-		// Check if RC file is set up
-		isSetup, rcFile, err := claude.CheckRCFileSetup()
-		if err != nil {
-			// Non-fatal, just warn
-			fmt.Printf("\nWarning: %v\n", err)
-			return nil
-		}
-
-		if !isSetup {
-			// One-time setup needed
-			fmt.Println("\n⚠️  One-time setup: Add this line to your", rcFile)
-			fmt.Printf("  [ -f %s ] && source %s\n", claude.EnvFilePath(), claude.EnvFilePath())
-			fmt.Println("\nThen reload your shell.")
+		if err := claude.ReloadClaudeEnvironment(providerName, provider); err != nil {
+			return fmt.Errorf("failed to reload Claude environment: %w", err)
 		}
 
 		return nil

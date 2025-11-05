@@ -22,36 +22,8 @@ Your provider configurations will be preserved for future use.
 Example:
   zzk claude reset`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// Load config
-		config, err := claude.LoadConfig()
-		if err != nil {
-			return fmt.Errorf("failed to load config: %w", err)
-		}
-
-		// Clear env file
-		if err := claude.ClearEnvFile(); err != nil {
-			return fmt.Errorf("failed to clear env file: %w", err)
-		}
-
-		// Clear active provider
-		wasActive := config.Active
-		config.ClearActive()
-
-		if err := claude.SaveConfig(config); err != nil {
-			return fmt.Errorf("failed to update config: %w", err)
-		}
-
-		if wasActive != "" {
-			fmt.Printf("✓ Cleared active provider: %s\n", wasActive)
-		} else {
-			fmt.Println("✓ No active provider to clear")
-		}
-
-		fmt.Println("✓ Reset to official Anthropic API")
-
-		// Check if shell is in sync
-		if needsReload, warning := claude.CheckShellSync(""); needsReload {
-			fmt.Println(warning)
+		if err := claude.ResetToOfficialAPI(); err != nil {
+			return fmt.Errorf("failed to reset to official API: %w", err)
 		}
 
 		return nil

@@ -52,16 +52,10 @@ Examples:
 
 		fmt.Printf("\n✓ Provider '%s' updated successfully!\n", providerName)
 
-		// If this was the active provider, update env file
+		// If this was the active provider, update env file and check shell sync
 		if config.Active == providerName {
-			if err := claude.WriteEnvFile(*provider); err != nil {
-				return fmt.Errorf("failed to update env file: %w", err)
-			}
-			fmt.Println("✓ Active provider updated")
-
-			// Check if shell is in sync
-			if needsReload, warning := claude.CheckShellSync(provider.BaseURL); needsReload {
-				fmt.Println(warning)
+			if err := claude.ReloadClaudeEnvironment(providerName, *provider); err != nil {
+				return fmt.Errorf("failed to reload Claude environment: %w", err)
 			}
 		}
 

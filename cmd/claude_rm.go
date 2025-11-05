@@ -65,16 +65,9 @@ Examples:
 
 		fmt.Printf("✓ Provider '%s' removed\n", providerName)
 
-		// If was active, reset to official API
 		if wasActive {
-			if err := claude.ClearEnvFile(); err != nil {
-				return fmt.Errorf("failed to clear env file: %w", err)
-			}
-			fmt.Println("✓ Automatically reset to official Anthropic API")
-
-			// Check if shell is in sync
-			if needsReload, warning := claude.CheckShellSync(""); needsReload {
-				fmt.Println(warning)
+			if err := claude.ResetToOfficialAPI(); err != nil {
+				return fmt.Errorf("failed to reset to official API: %w", err)
 			}
 		}
 

@@ -131,11 +131,20 @@ func CheckRCFileSetup() (bool, string, error) {
 			continue
 		}
 		// Check for source command with our env file (exact match with word boundaries)
-		// Match patterns: "source <path>", ". <path>", "source <path> ", ". <path> "
-		if (trimmed == "source "+envPath || strings.HasPrefix(trimmed, "source "+envPath+" ") ||
-		    strings.HasPrefix(trimmed, "source "+envPath+";") ||
-		    trimmed == ". "+envPath || strings.HasPrefix(trimmed, ". "+envPath+" ") ||
-		    strings.HasPrefix(trimmed, ". "+envPath+";")) {
+		// Match patterns:
+		// - "source <path>", ". <path>"
+		// - "source <path> ", ". <path> " (with trailing space/semicolon)
+		// - "[ -f <path> ] && source <path>" (conditional sourcing)
+		sourceLine := fmt.Sprintf("source %s", envPath)
+		dotSourceLine := fmt.Sprintf(". %s", envPath)
+		conditionalSourceLine := fmt.Sprintf("[ -f %s ] && source %s", envPath, envPath)
+
+		if trimmed == sourceLine || strings.HasPrefix(trimmed, sourceLine+" ") ||
+			strings.HasPrefix(trimmed, sourceLine+";") ||
+			trimmed == dotSourceLine || strings.HasPrefix(trimmed, dotSourceLine+" ") ||
+			strings.HasPrefix(trimmed, dotSourceLine+";") ||
+			trimmed == conditionalSourceLine || strings.HasPrefix(trimmed, conditionalSourceLine+" ") ||
+			strings.HasPrefix(trimmed, conditionalSourceLine+";") {
 			return true, rcFile, nil
 		}
 	}
@@ -207,4 +216,105 @@ func CheckShellSync(expectedBaseURL string) (needsReload bool, warning string) {
 	}
 
 	return false, ""
+}
+
+// ResetToOfficialAPI resets the Claude environment to use the official Anthropic API.
+// It clears the env file, updates the config, checks shell sync, and shows RC file setup warnings if needed.
+func ResetToOfficialAPI() error {
+	// Load config
+	config, err := LoadConfig()
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	// Clear env file
+	if err := ClearEnvFile(); err != nil {
+		return fmt.Errorf("failed to clear env file: %w", err)
+	}
+
+	// Clear active provider
+	wasActive := config.Active
+	config.ClearActive()
+
+	if err := SaveConfig(config); err != nil {
+		return fmt.Errorf("failed to update config: %w", err)
+	}
+
+	if wasActive != "" {
+		fmt.Printf("✓ Cleared active provider: %s\n", wasActive)
+	} else {
+		fmt.Println("✓ No active provider to clear")
+	}
+
+	fmt.Println("✓ Reset to official Anthropic API")
+
+	// Check if shell is in sync
+	if needsReload, warning := CheckShellSync(""); needsReload {
+		fmt.Println(warning)
+	}
+
+	// Check if RC file is set up
+	isSetup, rcFile, err := CheckRCFileSetup()
+	if err != nil {
+		// Non-fatal, just warn
+		fmt.Printf("\nWarning: %v\n", err)
+		return nil
+	}
+
+	if !isSetup {
+		// One-time setup needed
+		fmt.Println("\n⚠️  One-time setup: Add this line to your", rcFile)
+		fmt.Printf("  [ -f %s ] && source %s\n", EnvFilePath(), EnvFilePath())
+		fmt.Println("\nThen reload your shell.")
+	}
+
+	return nil
+}
+
+// ReloadClaudeEnvironment reloads the Claude environment when a provider is edited.
+// It writes the env file, checks shell sync, and shows warnings if needed.
+func ReloadClaudeEnvironment(providerName string, provider Provider) error {
+	// Write env file
+	if err := WriteEnvFile(provider); err != nil {
+		return fmt.Errorf("failed to write env file: %w", err)
+	}
+
+	// Update active in config
+	config, err := LoadConfig()
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	if err := config.SetActive(providerName); err != nil {
+		return fmt.Errorf("failed to set active provider: %w", err)
+	}
+
+	if err := SaveConfig(config); err != nil {
+		return fmt.Errorf("failed to update config: %w", err)
+	}
+
+	fmt.Printf("✓ Switched to provider: %s\n", providerName)
+	fmt.Printf("  Base URL: %s\n", provider.BaseURL)
+
+	// Check if shell is in sync
+	if needsReload, warning := CheckShellSync(provider.BaseURL); needsReload {
+		fmt.Println(warning)
+	}
+
+	// Check if RC file is set up
+	isSetup, rcFile, err := CheckRCFileSetup()
+	if err != nil {
+		// Non-fatal, just warn
+		fmt.Printf("\nWarning: %v\n", err)
+		return nil
+	}
+
+	if !isSetup {
+		// One-time setup needed
+		fmt.Println("\n⚠️  One-time setup: Add this line to your", rcFile)
+		fmt.Printf("  [ -f %s ] && source %s\n", EnvFilePath(), EnvFilePath())
+		fmt.Println("\nThen reload your shell.")
+	}
+
+	return nil
 }
