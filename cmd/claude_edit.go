@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/ppowo/zzk/internal/claude"
 	"github.com/spf13/cobra"
@@ -53,7 +54,17 @@ Examples:
 		fmt.Printf("\n✓ Provider '%s' updated successfully!\n", providerName)
 
 		// If this was the active provider, update env file and check shell sync
-		if config.Active == providerName {
+		// Also reload if this provider matches what's in the shell (even if active field is missing)
+		shouldReload := config.Active == providerName
+		if !shouldReload {
+			// Check if shell environment is using this provider
+			envBaseURL := os.Getenv("ANTHROPIC_BASE_URL")
+			if envBaseURL == existingProvider.BaseURL {
+				shouldReload = true
+			}
+		}
+
+		if shouldReload {
 			if err := claude.ReloadClaudeEnvironment(providerName, *provider); err != nil {
 				return fmt.Errorf("failed to reload Claude environment: %w", err)
 			}

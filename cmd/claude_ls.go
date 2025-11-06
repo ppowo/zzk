@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 	"sort"
 
 	"github.com/ppowo/zzk/internal/claude"
@@ -27,14 +26,7 @@ Example:
 		}
 
 		if len(config.Providers) == 0 {
-			// Check if shell still has old variables even though no providers exist
-			if os.Getenv("ANTHROPIC_BASE_URL") != "" {
-				fmt.Println("No providers configured, but shell still has old variables! ⚠️")
-				fmt.Println("\nReload your shell to clear:")
-				fmt.Println("  source ~/.zshrc")
-			} else {
-				fmt.Println("No providers configured.")
-			}
+			fmt.Println("No providers configured.")
 			fmt.Println("\nTo add a provider, run:")
 			fmt.Println("  zzk claude add <provider-name>")
 			return nil
@@ -49,30 +41,9 @@ Example:
 
 		// Show active provider in config
 		if config.Active != "" {
-			fmt.Printf("Active: %s", config.Active)
-
-			// Check if shell environment matches
-			envBaseURL := os.Getenv("ANTHROPIC_BASE_URL")
-			if envBaseURL == "" {
-				fmt.Print(" ⚠️  (shell not reloaded)")
-			} else {
-				// Check if it matches the active provider
-				activeProvider, exists := config.GetProvider(config.Active)
-				if exists && envBaseURL != activeProvider.BaseURL {
-					fmt.Print(" ⚠️  (shell has different provider)")
-				}
-			}
-			fmt.Println()
-			fmt.Println()
+			fmt.Printf("Active: %s\n\n", config.Active)
 		} else {
-			fmt.Print("Active: none (using official Anthropic API)")
-
-			// Check if shell still has old variables
-			if os.Getenv("ANTHROPIC_BASE_URL") != "" {
-				fmt.Print(" ⚠️  (shell not reloaded)")
-			}
-			fmt.Println()
-			fmt.Println()
+			fmt.Println("Active: none (using official Anthropic API)")
 		}
 
 		// Show all providers list

@@ -193,29 +193,22 @@ func ShowSetupInstructions() {
 	}
 }
 
-// CheckShellSync checks if the shell environment matches the expected state
-// Returns true if shell needs reloading, along with a warning message
-func CheckShellSync(expectedBaseURL string) (needsReload bool, warning string) {
-	currentBaseURL := os.Getenv("ANTHROPIC_BASE_URL")
+// GetReloadInstructions returns instructions for reloading the shell environment
+func GetReloadInstructions() string {
+	shell := DetectShell()
+	rcFile := GetRCFilePath(shell)
 
-	if expectedBaseURL == "" {
-		// We expect no variables set (after reset or no active provider)
-		if currentBaseURL != "" {
-			return true, "⚠️  Shell has old variables. Run 'ss' to reload."
-		}
-		return false, ""
+	if rcFile == "" {
+		rcFile = "your shell config file"
 	}
 
-	// We expect specific provider to be active
-	if currentBaseURL == "" {
-		return true, "⚠️  Shell not reloaded. Run 'ss' to apply changes."
-	}
+	return fmt.Sprintf(`
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️  ACTION REQUIRED: Reload your shell to apply changes
 
-	if currentBaseURL != expectedBaseURL {
-		return true, "⚠️  Shell has different provider. Run 'ss' to apply changes."
-	}
-
-	return false, ""
+Run this command:
+  source %s
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, rcFile)
 }
 
 // ResetToOfficialAPI resets the Claude environment to use the official Anthropic API.
@@ -247,11 +240,7 @@ func ResetToOfficialAPI() error {
 	}
 
 	fmt.Println("✓ Reset to official Anthropic API")
-
-	// Check if shell is in sync
-	if needsReload, warning := CheckShellSync(""); needsReload {
-		fmt.Println(warning)
-	}
+	fmt.Println(GetReloadInstructions())
 
 	// Check if RC file is set up
 	isSetup, rcFile, err := CheckRCFileSetup()
@@ -295,11 +284,7 @@ func ReloadClaudeEnvironment(providerName string, provider Provider) error {
 
 	fmt.Printf("✓ Switched to provider: %s\n", providerName)
 	fmt.Printf("  Base URL: %s\n", provider.BaseURL)
-
-	// Check if shell is in sync
-	if needsReload, warning := CheckShellSync(provider.BaseURL); needsReload {
-		fmt.Println(warning)
-	}
+	fmt.Println(GetReloadInstructions())
 
 	// Check if RC file is set up
 	isSetup, rcFile, err := CheckRCFileSetup()

@@ -22,6 +22,7 @@ Examples:
   zzk claude add synthetic        # Add a new provider
   zzk claude ls                   # List providers (shows active)
   zzk claude use synthetic        # Switch to a provider
+  zzk claude edit synthetic       # Edit existing provider
   zzk claude reset                # Reset to official Anthropic
   zzk claude rm synthetic         # Remove a provider`,
 	RunE: func(cmd *cobra.Command, args []string) error {
