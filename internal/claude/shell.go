@@ -202,13 +202,10 @@ func GetReloadInstructions() string {
 		rcFile = "your shell config file"
 	}
 
-	return fmt.Sprintf(`
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-⚠️  ACTION REQUIRED: Reload your shell to apply changes
+	return fmt.Sprintf(`⚠️  ACTION REQUIRED: Reload your shell to apply changes
 
 Run this command:
-  source %s
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, rcFile)
+  source %s`, rcFile)
 }
 
 // ResetToOfficialAPI resets the Claude environment to use the official Anthropic API.
