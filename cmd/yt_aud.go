@@ -18,8 +18,8 @@ var ytAudCmd = &cobra.Command{
 		if err := CheckAria2c(); err != nil {
 			return err
 		}
-		if err := EnsureYtDlp(); err != nil {
-			return fmt.Errorf("failed to ensure yt-dlp: %w", err)
+		if err := CheckYtDlp(); err != nil {
+			return err
 		}
 		var destDir string
 		if UseTmpDir {
@@ -34,9 +34,8 @@ var ytAudCmd = &cobra.Command{
 			return fmt.Errorf("failed to change to directory %s: %w", destDir, err)
 		}
 		fmt.Printf("Downloading audio to: %s\n", destDir)
-		ytDlpPath := GetYtDlpPath()
 		cmdArgs := append(GetAudioArgs(), args...)
-		ytCmd := exec.Command(ytDlpPath, cmdArgs...)
+		ytCmd := exec.Command("yt-dlp", cmdArgs...)
 		ytCmd.Stdout = os.Stdout
 		ytCmd.Stderr = os.Stderr
 		if err := ytCmd.Run(); err != nil {

@@ -2,11 +2,7 @@ package cmd
 
 import (
 	"fmt"
-	"io"
-	"net/http"
-	"os"
 	"os/exec"
-	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -183,137 +179,15 @@ func CheckAria2c() error {
 	return nil
 }
 
-func EnsureYtDlp() error {
-	binPath := GetYtDlpPath()
-
-	// Check if yt-dlp exists
-	if _, err := os.Stat(binPath); err == nil {
-		// Check if it needs updating
-		if needsUpdate, err := checkYtDlpUpdate(binPath); err == nil && needsUpdate {
-			fmt.Println("yt-dlp update available, downloading...")
-			return downloadYtDlp(binPath)
-		}
-		return nil
-	}
-
-	// yt-dlp not found, download it
-	fmt.Println("yt-dlp not found, downloading...")
-	return downloadYtDlp(binPath)
-}
-
-func checkYtDlpUpdate(binPath string) (bool, error) {
-	// Run yt-dlp --version to get current version
-	cmd := exec.Command(binPath, "--version")
-	output, err := cmd.Output()
+func CheckYtDlp() error {
+	_, err := exec.LookPath("yt-dlp")
 	if err != nil {
-		// If we can't get version, assume it needs update
-		return true, nil
+		return fmt.Errorf("yt-dlp is not installed. Please install yt-dlp first.\n" +
+			"  macOS: brew install yt-dlp\n" +
+			"  Linux (Debian/Ubuntu): sudo apt install yt-dlp\n" +
+			"  Linux (Fedora): sudo dnf install yt-dlp\n" +
+			"  Windows: scoop install yt-dlp or choco install yt-dlp")
 	}
-
-	currentVersion := strings.TrimSpace(string(output))
-
-	// Check latest version from GitHub API
-	resp, err := http.Get("https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest")
-	if err != nil {
-		// If we can't check, don't update
-		return false, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return false, fmt.Errorf("failed to check latest version: %s", resp.Status)
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return false, err
-	}
-
-	// Simple JSON parsing - look for "tag_name"
-	bodyStr := string(body)
-	tagStart := strings.Index(bodyStr, `"tag_name":"`)
-	if tagStart == -1 {
-		return false, fmt.Errorf("could not parse latest version")
-	}
-	tagStart += len(`"tag_name":"`)
-	tagEnd := strings.Index(bodyStr[tagStart:], `"`)
-	if tagEnd == -1 {
-		return false, fmt.Errorf("could not parse latest version")
-	}
-	latestVersion := bodyStr[tagStart : tagStart+tagEnd]
-
-	// yt-dlp --version outputs just the date (e.g., "2025.09.26")
-	// GitHub tag_name is the same format
-	currentVersion = strings.TrimSpace(currentVersion)
-	latestVersion = strings.TrimSpace(latestVersion)
-
-	// Compare versions
-	return currentVersion != latestVersion, nil
-}
-
-func downloadYtDlp(binPath string) error {
-	url := getYtDlpURL()
-	if url == "" {
-		return fmt.Errorf("unsupported OS: %s", runtime.GOOS)
-	}
-
-	zzkDir := filepath.Dir(binPath)
-	if err := os.MkdirAll(zzkDir, 0755); err != nil {
-		return fmt.Errorf("failed to create zzk directory: %w", err)
-	}
-
-	resp, err := http.Get(url)
-	if err != nil {
-		return fmt.Errorf("download failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("download failed with status: %s", resp.Status)
-	}
-
-	out, err := os.Create(binPath)
-	if err != nil {
-		return fmt.Errorf("failed to create file: %w", err)
-	}
-	defer out.Close()
-
-	if _, err := io.Copy(out, resp.Body); err != nil {
-		return fmt.Errorf("failed to write file: %w", err)
-	}
-
-	if runtime.GOOS != "windows" {
-		if err := os.Chmod(binPath, 0755); err != nil {
-			return fmt.Errorf("failed to make executable: %w", err)
-		}
-	}
-
-	fmt.Printf("✓ Downloaded yt-dlp to: %s\n", binPath)
 	return nil
 }
 
-func GetYtDlpPath() string {
-	cacheDir, err := os.UserCacheDir()
-	if err != nil {
-		cacheDir = os.TempDir()
-	}
-	zzkDir := filepath.Join(cacheDir, "zzk")
-	if runtime.GOOS == "windows" {
-		return filepath.Join(zzkDir, "yt-dlp.exe")
-	}
-	return filepath.Join(zzkDir, "yt-dlp")
-}
-
-func getYtDlpURL() string {
-	baseURL := "https://github.com/yt-dlp/yt-dlp/releases/latest/download/"
-	switch runtime.GOOS {
-	case "linux":
-		return baseURL + "yt-dlp_linux"
-	case "darwin":
-		return baseURL + "yt-dlp_macos"
-	case "windows":
-		return baseURL + "yt-dlp.exe"
-	default:
-		return ""
-	}
-}
