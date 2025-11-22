@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 )
 
@@ -15,7 +17,8 @@ With CODE argument: Downloads and restores OpenEmu data from the uploaded archiv
 Examples:
   zzk backup openemu              # Upload OpenEmu data and get a code
   zzk backup openemu xyz123       # Restore OpenEmu from code xyz123`,
-	Args: cobra.MaximumNArgs(1),
+	Args: cobra.ArbitraryArgs,
+	DisableFlagParsing: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		target := backupTargets["openemu"]
 
@@ -27,9 +30,11 @@ Examples:
 		if len(args) == 0 {
 			// Upload mode
 			return uploadBackup(target)
-		} else {
+		} else if len(args) == 1 {
 			// Restore mode
 			return restoreBackup(target, args[0])
+		} else {
+			return fmt.Errorf("too many arguments")
 		}
 	},
 }
