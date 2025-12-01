@@ -48,7 +48,15 @@ func Build() error {
 	if runtime.GOOS == "windows" {
 		binary = "bin/zzk.exe"
 	}
-	return sh.Run("go", "build", "-o", binary, ".")
+
+	// Build with optimization flags to reduce binary size:
+	// -ldflags="-s -w" removes symbol table and debug info
+	// -trimpath removes file system paths from binary
+	return sh.Run("go", "build",
+		"-ldflags=-s -w",
+		"-trimpath",
+		"-o", binary,
+		".")
 }
 
 func getInstallDir() (string, error) {

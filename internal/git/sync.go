@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"time"
 
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -28,6 +29,12 @@ func Sync(config *Config) (*SyncResult, error) {
 		Failed:         make(map[string]error),
 	}
 
+	// Load state file (or create new one)
+	state, err := LoadState()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load state: %w", err)
+	}
+
 	fmt.Println("Reading config:", ConfigPath())
 	fmt.Printf("Found %d identities: %s\n\n", len(config.Identities), identityNames(config))
 
@@ -37,14 +44,53 @@ func Sync(config *Config) (*SyncResult, error) {
 		return nil, fmt.Errorf("failed to detect orphans: %w", err)
 	}
 
+	// If orphans found, backup before removing
 	if len(orphans) > 0 {
 		fmt.Printf("  Found %d orphaned identities: %s\n", len(orphans), strings.Join(orphans, ", "))
+
+		// Collect files to backup
+		filesToBackup := []string{}
+		for _, orphan := range orphans {
+			home, _ := os.UserHomeDir()
+			keyPath := filepath.Join(home, ".ssh", fmt.Sprintf("%s_key", orphan))
+			pubKeyPath := keyPath + ".pub"
+			configPath := filepath.Join(home, fmt.Sprintf(".gitconfig-%s", orphan))
+
+			if _, err := os.Stat(keyPath); err == nil {
+				filesToBackup = append(filesToBackup, keyPath)
+			}
+			if _, err := os.Stat(pubKeyPath); err == nil {
+				filesToBackup = append(filesToBackup, pubKeyPath)
+			}
+			if _, err := os.Stat(configPath); err == nil {
+				filesToBackup = append(filesToBackup, configPath)
+			}
+		}
+
+		// Create backup if there are files to backup
+		if len(filesToBackup) > 0 {
+			backupPath, err := BackupFiles(filesToBackup, "orphan-cleanup")
+			if err != nil {
+				fmt.Printf("  ⚠ Warning: failed to create backup: %v\n", err)
+			} else {
+				fmt.Printf("  ℹ Backed up orphaned files to: %s\n", backupPath)
+				home, _ := os.UserHomeDir()
+				backupDir := filepath.Join(home, ".config", "zzk", "backups")
+				if err := RotateBackups(backupDir, 10); err != nil {
+					fmt.Printf("  ⚠ Warning: failed to rotate backups: %v\n", err)
+				}
+			}
+		}
+
+		// Remove orphans
 		for _, orphan := range orphans {
 			if err := cleanupIdentity(orphan); err != nil {
 				fmt.Printf("  ⚠ Warning: failed to clean up %s: %v\n", orphan, err)
 			} else {
 				fmt.Printf("  ✓ Removed orphan: %s\n", orphan)
 				result.OrphansRemoved = append(result.OrphansRemoved, orphan)
+				// Remove from state
+				delete(state.Identities, orphan)
 			}
 		}
 	} else {
@@ -149,6 +195,22 @@ func Sync(config *Config) (*SyncResult, error) {
 	}
 	fmt.Println("  ✓ Updated ~/.ssh/allowed_signers")
 	fmt.Println()
+
+	// Update state file with sync timestamps
+	state.LastSync = time.Now()
+	for _, identity := range config.Identities {
+		fingerprint := getSSHKeyFingerprint(&identity)
+		if state.Identities[identity.Name] == nil {
+			state.Identities[identity.Name] = &IdentityState{}
+		}
+		state.Identities[identity.Name].LastSync = time.Now()
+		state.Identities[identity.Name].SSHKeyFingerprint = fingerprint
+	}
+
+	if err := state.Save(); err != nil {
+		fmt.Printf("  ⚠ Warning: failed to save state: %v\n", err)
+	}
+
 	printSyncSummary(result)
 
 	return result, nil
@@ -244,4 +306,25 @@ func printSyncSummary(result *SyncResult) {
 		fmt.Println("1. Add your public keys to your accounts")
 		fmt.Println("2. Run 'zzk git sync' again to verify connections")
 	}
+}
+
+// getSSHKeyFingerprint returns the SSH key fingerprint for an identity
+func getSSHKeyFingerprint(identity *Identity) string {
+	keyPath := identity.SSHKeyPath()
+	if _, err := os.Stat(keyPath); err != nil {
+		return ""
+	}
+
+	// Read the public key file to generate a simple hash
+	pubKeyPath := keyPath + ".pub"
+	data, err := os.ReadFile(pubKeyPath)
+	if err != nil {
+		return ""
+	}
+
+	// Return a simple identifier (first 16 chars of the key)
+	if len(data) > 16 {
+		return string(data[:16])
+	}
+	return string(data)
 }

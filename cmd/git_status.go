@@ -5,14 +5,15 @@ import (
 	"os"
 	"strings"
 
+	"github.com/dustin/go-humanize"
 	"github.com/ppowo/zzk/internal/git"
 	"github.com/spf13/cobra"
 )
 
-var gitLsCmd = &cobra.Command{
-	Use:   "ls",
-	Short: "List all git identities",
-	Long:  `Lists all git identities from ~/.git-identities.json with their status.`,
+var gitStatusCmd = &cobra.Command{
+	Use:   "status",
+	Short: "Show status of all git identities",
+	Long:  `Shows the status of all git identities from ~/.git-identities.json with their last sync time.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		config, err := git.LoadConfig()
 		if err != nil {
@@ -21,35 +22,70 @@ var gitLsCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
+		// Load state to get last sync times
+		state, err := git.LoadState()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: could not load state: %v\n", err)
+			state = nil
+		}
+
 		if len(config.Identities) == 0 {
 			fmt.Println("No identities configured")
 			return
 		}
 
-		fmt.Printf("%-20s %-15s %-25s %-15s %-20s %s\n",
-			"IDENTITY", "USER", "EMAIL", "DOMAIN", "FOLDERS", "STATUS")
-		fmt.Println(strings.Repeat("-", 120))
+		fmt.Printf("%-20s %-15s %-25s %-15s %-20s %-15s %s\n",
+			"IDENTITY", "USER", "EMAIL", "DOMAIN", "FOLDERS", "STATUS", "LAST SYNC")
+		fmt.Println(strings.Repeat("-", 135))
 
 		for _, identity := range config.Identities {
 			status := getIdentityStatus(identity)
+
+			// Get last sync time from state
+			lastSync := "Never"
+			if state != nil {
+				if identityState, ok := state.Identities[identity.Name]; ok {
+					if !identityState.LastSync.IsZero() {
+						lastSync = humanize.Time(identityState.LastSync)
+					}
+				}
+			}
 
 			firstFolder := ""
 			if len(identity.Folders) > 0 {
 				firstFolder = identity.Folders[0]
 			}
 
-			fmt.Printf("%-20s %-15s %-25s %-15s %-20s %s\n",
+			fmt.Printf("%-20s %-15s %-25s %-15s %-20s %-15s %s\n",
 				identity.Name,
 				truncate(identity.User, 15),
 				truncate(identity.Email, 25),
 				identity.Domain,
 				truncate(firstFolder, 20),
-				status)
+				status,
+				lastSync)
 
 			for i := 1; i < len(identity.Folders); i++ {
 				fmt.Printf("%-20s %-15s %-25s %-15s %-20s\n",
 					"", "", "", "", truncate(identity.Folders[i], 20))
 			}
+		}
+
+		fmt.Println()
+
+		// Print summary
+		activeCount := 0
+		for _, identity := range config.Identities {
+			if git.SSHKeyExists(identity) {
+				activeCount++
+			}
+		}
+
+		if state != nil && !state.LastSync.IsZero() {
+			fmt.Printf("Summary: %d identities active | Last global sync: %s\n",
+				activeCount, humanize.Time(state.LastSync))
+		} else {
+			fmt.Printf("Summary: %d identities active | Never synced\n", activeCount)
 		}
 
 		fmt.Println()
@@ -61,7 +97,7 @@ var gitLsCmd = &cobra.Command{
 }
 
 func init() {
-	gitCmd.AddCommand(gitLsCmd)
+	gitCmd.AddCommand(gitStatusCmd)
 }
 
 func getIdentityStatus(identity git.Identity) string {

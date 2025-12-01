@@ -19,8 +19,8 @@ Features:
 Configuration file: ~/.git-identities.json
 
 Examples:
-  zzk git sync                    # Apply configuration
-  zzk git ls                      # List all identities
+  zzk git sync                    # Apply configuration and cleanup orphans
+  zzk git status                  # Show status of all identities
   zzk git where                   # Show current identity
   zzk git info github-work        # Show identity details`,
 }
