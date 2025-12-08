@@ -62,15 +62,18 @@ func uploadBackup(target BackupTarget) error {
 	// Upload
 	fmt.Printf("%s - Uploading...\n", time.Now().Format("2006-01-02 15:04"))
 
-	curlCmd := exec.Command("curl", "-s", "-F", fmt.Sprintf("file=@%s", tmpArchive), backupServiceURL)
+	curlCmd := exec.Command("curl", "-s", "-A", "zzk-backup/1.0", "-F", fmt.Sprintf("file=@%s", tmpArchive), backupServiceURL)
 	output, err := curlCmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to upload: %w", err)
 	}
 
-	url := strings.TrimSpace(string(output))
+	url := cleanURL(string(output))
 	if url == "" {
 		return fmt.Errorf("upload failed: empty response")
+	}
+	if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
+		return fmt.Errorf("upload failed: invalid URL response: %s", url)
 	}
 
 	// Verify upload by downloading to /tmp and checking it's a valid tar.xz
@@ -85,7 +88,7 @@ func uploadBackup(target BackupTarget) error {
 	defer os.Remove(verifyPath)
 
 	// Download the uploaded file
-	curlDownload := exec.Command("curl", "-sL", "-o", verifyPath, url)
+	curlDownload := exec.Command("curl", "-sL", "-A", "zzk-backup/1.0", "-o", verifyPath, url)
 	if err := curlDownload.Run(); err != nil {
 		return fmt.Errorf("failed to download for verification: %w", err)
 	}
@@ -105,6 +108,18 @@ func uploadBackup(target BackupTarget) error {
 	fmt.Printf("%s - Temporary archive removed.\n", time.Now().Format("2006-01-02 15:04"))
 
 	return nil
+}
+
+// cleanURL removes all control characters and whitespace from a URL string
+func cleanURL(s string) string {
+	var result strings.Builder
+	for _, r := range s {
+		// Keep only printable ASCII characters (space and above, but skip space too)
+		if r > 32 && r < 127 {
+			result.WriteRune(r)
+		}
+	}
+	return result.String()
 }
 
 // verifyTarXz checks if a file is a valid tar.xz archive

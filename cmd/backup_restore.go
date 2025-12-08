@@ -32,7 +32,7 @@ func restoreBackup(target BackupTarget, code string) error {
 
 	fmt.Printf("%s - Downloading...\n", time.Now().Format("2006-01-02 15:04"))
 
-	curlCmd := exec.Command("curl", "-sL", "-o", tmpArchive, url)
+	curlCmd := exec.Command("curl", "-sL", "-A", "zzk-backup/1.0", "-o", tmpArchive, url)
 	if err := curlCmd.Run(); err != nil {
 		return fmt.Errorf("failed to download archive: %w", err)
 	}

@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const backupServiceURL = "https://envs.sh"
+const backupServiceURL = "https://0x0.st"
 
 // Global exclusion patterns applied to all backups
 var globalExcludeGlobs = []string{
