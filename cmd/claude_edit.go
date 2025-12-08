@@ -38,6 +38,11 @@ Examples:
 		// Open editor with existing provider, retry on validation failure
 		provider, err := claude.EditProviderWithRetry(&existingProvider)
 		if err != nil {
+			// Don't show error details if user simply didn't make changes
+			if err.Error() == "no changes made" {
+				fmt.Println("No changes made.")
+				return nil
+			}
 			return fmt.Errorf("failed to edit provider: %w", err)
 		}
 

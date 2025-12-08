@@ -192,7 +192,7 @@ func EditProvider(existingProvider *Provider) (*Provider, error) {
 	}
 
 	if !modified {
-		return nil, fmt.Errorf("file not modified, aborting")
+		return nil, nil // Return nil to indicate user cancelled
 	}
 
 	// Parse the edited file

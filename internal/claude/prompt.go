@@ -48,6 +48,10 @@ func PromptYesNo(question string, defaultYes bool) (bool, error) {
 func EditProviderWithRetry(existing *Provider) (*Provider, error) {
 	for {
 		provider, err := EditProvider(existing)
+		if err == nil && provider == nil {
+			// User cancelled (no modifications made)
+			return nil, fmt.Errorf("no changes made")
+		}
 		if err == nil {
 			return provider, nil
 		}
