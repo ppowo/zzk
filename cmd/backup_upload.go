@@ -110,16 +110,23 @@ func uploadBackup(target BackupTarget) error {
 	return nil
 }
 
-// cleanURL removes all control characters and whitespace from a URL string
+// cleanURL removes control characters from a URL string returned by the upload service.
+// This handles cases where the response includes trailing newlines, carriage returns,
+// or other control characters (0x00-0x1F) that are invalid in URLs.
 func cleanURL(s string) string {
 	var result strings.Builder
+	result.Grow(len(s)) // Pre-allocate for efficiency
+
 	for _, r := range s {
-		// Keep only printable ASCII characters (space and above, but skip space too)
-		if r > 32 && r < 127 {
+		// Keep printable ASCII (0x20 space through 0x7E tilde)
+		// This includes spaces, letters, numbers, and URL-safe punctuation
+		if r >= 32 && r <= 126 {
 			result.WriteRune(r)
 		}
 	}
-	return result.String()
+
+	// Trim any resulting spaces from edges (in case spaces were at boundaries)
+	return strings.TrimSpace(result.String())
 }
 
 // verifyTarXz checks if a file is a valid tar.xz archive
