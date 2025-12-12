@@ -18,7 +18,7 @@ func DetectIdentity(config *Config, dir string) (*Identity, error) {
 
 	for _, identity := range config.Identities {
 		for _, folder := range identity.Folders {
-			expandedFolder := expandPath(folder)
+			expandedFolder := ExpandPath(folder)
 			absFolder, err := filepath.Abs(expandedFolder)
 			if err != nil {
 				continue
@@ -55,7 +55,7 @@ func MatchingFolder(identity Identity, dir string) string {
 	absDir = filepath.Clean(absDir)
 
 	for _, folder := range identity.Folders {
-		expandedFolder := expandPath(folder)
+		expandedFolder := ExpandPath(folder)
 		absFolder, err := filepath.Abs(expandedFolder)
 		if err != nil {
 			continue

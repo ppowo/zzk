@@ -102,7 +102,7 @@ func Sync(config *Config) (*SyncResult, error) {
 		fmt.Printf("Processing: %s\n", identity.Name)
 
 		for _, folder := range identity.Folders {
-			expandedFolder := expandPath(folder)
+			expandedFolder := ExpandPath(folder)
 			if err := os.MkdirAll(expandedFolder, 0755); err != nil {
 				fmt.Printf("  ⚠ Warning: failed to create folder %s: %v\n", folder, err)
 			} else {
@@ -155,7 +155,7 @@ func Sync(config *Config) (*SyncResult, error) {
 
 		var testFromDir string
 		for _, folder := range identity.Folders {
-			expandedFolder := expandPath(folder)
+			expandedFolder := ExpandPath(folder)
 			if _, err := os.Stat(expandedFolder); err == nil {
 				testFromDir = expandedFolder
 				break

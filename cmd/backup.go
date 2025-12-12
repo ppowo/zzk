@@ -29,7 +29,6 @@ var globalExcludeGlobs = []string{
 	".svn",
 	"node_modules",
 	".claude",
-	".claude/",
 	"*.claude",
 }
 
@@ -83,8 +82,8 @@ func init() {
 func isOSAllowed(target BackupTarget) error {
 	currentOS := runtime.GOOS
 	if slices.Contains(target.AllowedOS, currentOS) {
-			return nil
-		}
+		return nil
+	}
 	return fmt.Errorf("%s backup is only supported on %v (current OS: %s)",
 		target.Name, target.AllowedOS, currentOS)
 }

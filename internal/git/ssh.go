@@ -10,8 +10,8 @@ import (
 )
 
 func GenerateSSHKey(identity Identity) error {
-	keyPath := expandPath(identity.SSHKeyPath())
-	pubKeyPath := expandPath(identity.SSHPubKeyPath())
+	keyPath := ExpandPath(identity.SSHKeyPath())
+	pubKeyPath := ExpandPath(identity.SSHPubKeyPath())
 
 	os.Remove(keyPath)
 	os.Remove(pubKeyPath)
@@ -38,8 +38,8 @@ func GenerateSSHKey(identity Identity) error {
 }
 
 func SSHKeyExists(identity Identity) bool {
-	keyPath := expandPath(identity.SSHKeyPath())
-	pubKeyPath := expandPath(identity.SSHPubKeyPath())
+	keyPath := ExpandPath(identity.SSHKeyPath())
+	pubKeyPath := ExpandPath(identity.SSHPubKeyPath())
 
 	_, err1 := os.Stat(keyPath)
 	_, err2 := os.Stat(pubKeyPath)
@@ -106,7 +106,7 @@ func FindZZKManagedKeys() (map[string]string, error) {
 }
 
 func CopyPublicKeyToHome(identity Identity) (bool, error) {
-	pubKeyPath := expandPath(identity.SSHPubKeyPath())
+	pubKeyPath := ExpandPath(identity.SSHPubKeyPath())
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return false, fmt.Errorf("failed to get home directory: %w", err)
@@ -134,7 +134,7 @@ func CopyPublicKeyToHome(identity Identity) (bool, error) {
 }
 
 func AddKeyToSSHAgent(identity Identity) error {
-	keyPath := expandPath(identity.SSHKeyPath())
+	keyPath := ExpandPath(identity.SSHKeyPath())
 
 	exec.Command("ssh-add", "-d", keyPath).Run()
 
@@ -200,6 +200,3 @@ func ExpandPath(path string) string {
 	return path
 }
 
-func expandPath(path string) string {
-	return ExpandPath(path)
-}

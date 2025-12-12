@@ -68,13 +68,6 @@ func DetectShell() string {
 		return filepath.Base(shell)
 	}
 
-	// Try to detect from parent process on Unix
-	if ppid := os.Getppid(); ppid > 0 {
-		// On Linux, could check /proc/$PPID/exe for more accurate detection
-		// For now, we rely on $SHELL being set
-		_ = ppid // Use ppid to avoid unused variable
-	}
-
 	// Final fallback to bash (more common than sh)
 	return "bash"
 }

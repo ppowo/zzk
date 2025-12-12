@@ -86,7 +86,7 @@ func (p *Provider) Validate() error {
 	if strings.HasSuffix(p.BaseURL, "/") {
 		return fmt.Errorf("BASE_URL must not have trailing slash")
 	}
-	if p.APIToken == ""  {
+	if p.APIToken == "" {
 		return fmt.Errorf("API_TOKEN is required")
 	}
 	// Check for newlines (would break env file format)
