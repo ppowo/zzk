@@ -113,11 +113,10 @@ type ProviderConfig struct {
 		APIToken string `toml:"api_token"`
 	} `toml:"required"`
 	Optional struct {
-		OpusModel        string `toml:"opus_model"`
-		SonnetModel      string `toml:"sonnet_model"`
-		HaikuModel       string `toml:"haiku_model"`
-		SubagentModel    string `toml:"subagent_model"`
-		DisableTelemetry bool   `toml:"disable_telemetry"`
+		OpusModel     string `toml:"opus_model"`
+		SonnetModel   string `toml:"sonnet_model"`
+		HaikuModel    string `toml:"haiku_model"`
+		SubagentModel string `toml:"subagent_model"`
 	} `toml:"optional"`
 }
 
@@ -140,13 +139,12 @@ func ParseProviderFile(path string) (*Provider, error) {
 	}
 
 	return &Provider{
-		BaseURL:          cfg.Required.BaseURL,
-		APIToken:         cfg.Required.APIToken,
-		OpusModel:        cfg.Optional.OpusModel,
-		SonnetModel:      cfg.Optional.SonnetModel,
-		HaikuModel:       cfg.Optional.HaikuModel,
-		SubagentModel:    cfg.Optional.SubagentModel,
-		DisableTelemetry: cfg.Optional.DisableTelemetry,
+		BaseURL:       cfg.Required.BaseURL,
+		APIToken:      cfg.Required.APIToken,
+		OpusModel:     cfg.Optional.OpusModel,
+		SonnetModel:   cfg.Optional.SonnetModel,
+		HaikuModel:    cfg.Optional.HaikuModel,
+		SubagentModel: cfg.Optional.SubagentModel,
 	}, nil
 }
 

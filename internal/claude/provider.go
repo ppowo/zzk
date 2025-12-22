@@ -9,13 +9,12 @@ import (
 
 // Provider represents a Claude API provider configuration
 type Provider struct {
-	BaseURL          string `json:"base_url"`
-	APIToken         string `json:"api_token"`
-	OpusModel        string `json:"opus_model,omitempty"`
-	SonnetModel      string `json:"sonnet_model,omitempty"`
-	HaikuModel       string `json:"haiku_model,omitempty"`
-	SubagentModel    string `json:"subagent_model,omitempty"`
-	DisableTelemetry bool   `json:"disable_telemetry,omitempty"`
+	BaseURL       string `json:"base_url"`
+	APIToken      string `json:"api_token"`
+	OpusModel     string `json:"opus_model,omitempty"`
+	SonnetModel   string `json:"sonnet_model,omitempty"`
+	HaikuModel    string `json:"haiku_model,omitempty"`
+	SubagentModel string `json:"subagent_model,omitempty"`
 }
 
 var (
@@ -157,9 +156,6 @@ api_token = "your-token-here"
 # sonnet_model = ""
 # haiku_model = ""
 # subagent_model = ""
-
-# Set to true to disable telemetry
-# disable_telemetry = false
 `
 }
 
@@ -197,8 +193,6 @@ func (p *Provider) ToTemplate() string {
 		buf.WriteString("# subagent_model = \"\"\n")
 	}
 
-	fmt.Fprintf(&buf, "disable_telemetry = %t\n", p.DisableTelemetry)
-
 	return buf.String()
 }
 
@@ -230,11 +224,10 @@ func (p *Provider) ToShellExports() string {
 	} else {
 		buf.WriteString("unset CLAUDE_CODE_SUBAGENT_MODEL\n")
 	}
-	if p.DisableTelemetry {
-		buf.WriteString("export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1\n")
-	} else {
-		buf.WriteString("unset CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC\n")
-	}
+
+	// Always export hardcoded values for timeout and telemetry
+	fmt.Fprintf(&buf, "export API_TIMEOUT_MS=%d\n", 6000000)
+	buf.WriteString("export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1\n")
 
 	return buf.String()
 }

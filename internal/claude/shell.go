@@ -46,16 +46,18 @@ func ClearEnvFile() error {
 		return err
 	}
 
-	// Write unset commands to clear any existing environment variables
+	// Default environment configuration for official Anthropic API
+	// Always use hardcoded values for timeout and telemetry
 	content := `# No active provider - using official Anthropic API
-# Unset any previously set Claude variables
+# Default environment configuration
 unset ANTHROPIC_BASE_URL
 unset ANTHROPIC_AUTH_TOKEN
 unset ANTHROPIC_DEFAULT_OPUS_MODEL
 unset ANTHROPIC_DEFAULT_SONNET_MODEL
 unset ANTHROPIC_DEFAULT_HAIKU_MODEL
 unset CLAUDE_CODE_SUBAGENT_MODEL
-unset CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC
+export API_TIMEOUT_MS=6000000
+export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
 `
 
 	return fileutil.AtomicWrite(EnvFilePath(), []byte(content), 0600)
