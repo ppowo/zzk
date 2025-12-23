@@ -2,120 +2,69 @@ package claude
 
 import (
 	"fmt"
-	"net/url"
-	"regexp"
 	"strings"
 )
 
-// Provider represents a Claude API provider configuration
+// Provider represents a user's configuration for a Claude API provider.
+// The provider template (ID, base URL) is determined by the template registry.
 type Provider struct {
-	BaseURL       string `json:"base_url"`
-	APIToken      string `json:"api_token"`
+	APIKey        string `json:"api_key"`
 	OpusModel     string `json:"opus_model,omitempty"`
 	SonnetModel   string `json:"sonnet_model,omitempty"`
 	HaikuModel    string `json:"haiku_model,omitempty"`
 	SubagentModel string `json:"subagent_model,omitempty"`
 }
 
-var (
-	reservedNames = map[string]bool{
-		"anthropic": true,
-		"official":  true,
-		"reset":     true,
-		"default":   true,
+// Validate validates a provider configuration.
+// If templateID is provided, it also validates model overrides against template rules.
+func (p *Provider) Validate(templateID string) error {
+	if p.APIKey == "" {
+		return fmt.Errorf("API key is required")
 	}
-	providerNameRegex = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
-)
-
-// ValidateProviderName validates a provider name
-func ValidateProviderName(name string) error {
-	if name == "" {
-		return fmt.Errorf("provider name cannot be empty")
+	// Check for newlines (would break env file format)
+	if strings.ContainsAny(p.APIKey, "\n\r") {
+		return fmt.Errorf("API key must not contain newlines")
 	}
-
-	// Check length bounds first (most basic validation)
-	if len(name) < 2 {
-		return fmt.Errorf("provider name too short (min 2 characters)")
+	// Check actual key length
+	if len(p.APIKey) < 8 {
+		return fmt.Errorf("API key must be at least 8 characters")
 	}
-	if len(name) > 64 {
-		return fmt.Errorf("provider name too long (max 64 characters)")
+	// Ensure no leading/trailing whitespace
+	if strings.TrimSpace(p.APIKey) != p.APIKey {
+		return fmt.Errorf("API key must not have leading or trailing whitespace")
 	}
 
-	// Only alphanumeric, hyphens, underscores
-	if !providerNameRegex.MatchString(name) {
-		return fmt.Errorf("provider name must contain only letters, numbers, hyphens, and underscores")
+	// Check if template allows model overrides
+	if templateID != "" {
+		tmpl, ok := GetTemplate(templateID)
+		if !ok {
+			return fmt.Errorf("unknown provider template: %s", templateID)
+		}
+		if !tmpl.AllowModels && p.HasModelOverrides() {
+			return fmt.Errorf("provider %q does not support model overrides", tmpl.Name)
+		}
 	}
 
-	// Check it doesn't start or end with hyphen or underscore
-	if name[0] == '-' || name[0] == '_' || name[len(name)-1] == '-' || name[len(name)-1] == '_' {
-		return fmt.Errorf("provider name cannot start or end with hyphen or underscore")
+	// Validate model names if provided
+	if err := validateModelName("opus_model", p.OpusModel); err != nil {
+		return err
 	}
-
-	// Check reserved names last (semantic validation)
-	if reservedNames[name] {
-		return fmt.Errorf("'%s' is a reserved name, please choose another", name)
+	if err := validateModelName("sonnet_model", p.SonnetModel); err != nil {
+		return err
+	}
+	if err := validateModelName("haiku_model", p.HaikuModel); err != nil {
+		return err
+	}
+	if err := validateModelName("subagent_model", p.SubagentModel); err != nil {
+		return err
 	}
 
 	return nil
 }
 
-// Validate validates a provider configuration
-func (p *Provider) Validate() error {
-	if p.BaseURL == "" {
-		return fmt.Errorf("BASE_URL is required")
-	}
-	parsedURL, err := url.Parse(p.BaseURL)
-	if err != nil {
-		return fmt.Errorf("invalid BASE_URL %q: %w", p.BaseURL, err)
-	}
-	if parsedURL.Scheme != "http" && parsedURL.Scheme != "https" {
-		return fmt.Errorf("BASE_URL must use http or https scheme, got %q", parsedURL.Scheme)
-	}
-	// Warn if using insecure HTTP
-	if parsedURL.Scheme == "http" {
-		return fmt.Errorf("BASE_URL uses insecure HTTP scheme - API tokens will be sent in plaintext!\nFor security, use HTTPS instead")
-	}
-	if parsedURL.Host == "" {
-		return fmt.Errorf("BASE_URL must have a valid host")
-	}
-	if parsedURL.User != nil {
-		return fmt.Errorf("BASE_URL must not contain credentials (user:pass@)")
-	}
-	// Check for trailing slash (will be stripped before saving)
-	if strings.HasSuffix(p.BaseURL, "/") {
-		return fmt.Errorf("BASE_URL must not have trailing slash")
-	}
-	if p.APIToken == "" {
-		return fmt.Errorf("API_TOKEN is required")
-	}
-	// Check for newlines (would break env file format)
-	if strings.ContainsAny(p.APIToken, "\n\r") {
-		return fmt.Errorf("API_TOKEN must not contain newlines")
-	}
-	// Check actual token length (before trimming)
-	if len(p.APIToken) < 8 {
-		return fmt.Errorf("API_TOKEN must be at least 8 characters")
-	}
-	// Ensure no leading/trailing whitespace
-	if strings.TrimSpace(p.APIToken) != p.APIToken {
-		return fmt.Errorf("API_TOKEN must not have leading or trailing whitespace")
-	}
-
-	// Validate model names if provided
-	if err := validateModelName("OPUS_MODEL", p.OpusModel); err != nil {
-		return err
-	}
-	if err := validateModelName("SONNET_MODEL", p.SonnetModel); err != nil {
-		return err
-	}
-	if err := validateModelName("HAIKU_MODEL", p.HaikuModel); err != nil {
-		return err
-	}
-	if err := validateModelName("SUBAGENT_MODEL", p.SubagentModel); err != nil {
-		return err
-	}
-
-	return nil
+// HasModelOverrides returns true if any model override is set.
+func (p *Provider) HasModelOverrides() bool {
+	return p.OpusModel != "" || p.SonnetModel != "" || p.HaikuModel != "" || p.SubagentModel != ""
 }
 
 // validateModelName validates a model name doesn't contain problematic characters
@@ -142,85 +91,45 @@ func validateModelName(fieldName, modelName string) error {
 	return nil
 }
 
-// Template returns a template for creating a new provider
-func Template() string {
-	return `# Provider configuration for Claude Code
+// ToShellExports returns shell export commands for this provider.
+// The templateID is required to look up the base URL from the template registry.
+func (p *Provider) ToShellExports(templateID string) (string, error) {
+	tmpl, ok := GetTemplate(templateID)
+	if !ok {
+		return "", fmt.Errorf("unknown provider template: %s", templateID)
+	}
 
-[required]
-base_url = "https://api.example.com/anthropic"
-api_token = "your-token-here"
-
-[optional]
-# Uncomment and set to override default models
-# opus_model = ""
-# sonnet_model = ""
-# haiku_model = ""
-# subagent_model = ""
-`
-}
-
-// ToTemplate converts a provider to template format for editing
-func (p *Provider) ToTemplate() string {
 	var buf strings.Builder
 
-	buf.WriteString("# Provider configuration for Claude Code\n\n")
-	buf.WriteString("[required]\n")
-	fmt.Fprintf(&buf, "base_url = %q\n", p.BaseURL)
-	fmt.Fprintf(&buf, "api_token = %q\n\n", p.APIToken)
-	buf.WriteString("[optional]\n")
+	fmt.Fprintf(&buf, "export ANTHROPIC_BASE_URL=%q\n", tmpl.BaseURL)
+	fmt.Fprintf(&buf, "export ANTHROPIC_AUTH_TOKEN=%q\n", p.APIKey)
 
-	if p.OpusModel != "" {
-		fmt.Fprintf(&buf, "opus_model = %q\n", p.OpusModel)
-	} else {
-		buf.WriteString("# opus_model = \"\"\n")
+	// Helper to get model value: use provider value if set, else template default
+	getModel := func(providerModel string) string {
+		if providerModel != "" {
+			return providerModel
+		}
+		return tmpl.DefaultModel
 	}
 
-	if p.SonnetModel != "" {
-		fmt.Fprintf(&buf, "sonnet_model = %q\n", p.SonnetModel)
-	} else {
-		buf.WriteString("# sonnet_model = \"\"\n")
-	}
-
-	if p.HaikuModel != "" {
-		fmt.Fprintf(&buf, "haiku_model = %q\n", p.HaikuModel)
-	} else {
-		buf.WriteString("# haiku_model = \"\"\n")
-	}
-
-	if p.SubagentModel != "" {
-		fmt.Fprintf(&buf, "subagent_model = %q\n", p.SubagentModel)
-	} else {
-		buf.WriteString("# subagent_model = \"\"\n")
-	}
-
-	return buf.String()
-}
-
-// ToShellExports returns shell export commands for this provider
-func (p *Provider) ToShellExports() string {
-	var buf strings.Builder
-
-	fmt.Fprintf(&buf, "export ANTHROPIC_BASE_URL=%q\n", p.BaseURL)
-	fmt.Fprintf(&buf, "export ANTHROPIC_AUTH_TOKEN=%q\n", p.APIToken)
-
-	// Model variables: either set them or unset them to clear previous values
-	if p.OpusModel != "" {
-		fmt.Fprintf(&buf, "export ANTHROPIC_DEFAULT_OPUS_MODEL=%q\n", p.OpusModel)
+	// Model variables: export if we have a value (from provider or template default), else unset
+	if model := getModel(p.OpusModel); model != "" {
+		fmt.Fprintf(&buf, "export ANTHROPIC_DEFAULT_OPUS_MODEL=%q\n", model)
 	} else {
 		buf.WriteString("unset ANTHROPIC_DEFAULT_OPUS_MODEL\n")
 	}
-	if p.SonnetModel != "" {
-		fmt.Fprintf(&buf, "export ANTHROPIC_DEFAULT_SONNET_MODEL=%q\n", p.SonnetModel)
+	if model := getModel(p.SonnetModel); model != "" {
+		fmt.Fprintf(&buf, "export ANTHROPIC_DEFAULT_SONNET_MODEL=%q\n", model)
 	} else {
 		buf.WriteString("unset ANTHROPIC_DEFAULT_SONNET_MODEL\n")
 	}
-	if p.HaikuModel != "" {
-		fmt.Fprintf(&buf, "export ANTHROPIC_DEFAULT_HAIKU_MODEL=%q\n", p.HaikuModel)
+	if model := getModel(p.HaikuModel); model != "" {
+		fmt.Fprintf(&buf, "export ANTHROPIC_DEFAULT_HAIKU_MODEL=%q\n", model)
 	} else {
 		buf.WriteString("unset ANTHROPIC_DEFAULT_HAIKU_MODEL\n")
 	}
-	if p.SubagentModel != "" {
-		fmt.Fprintf(&buf, "export CLAUDE_CODE_SUBAGENT_MODEL=%q\n", p.SubagentModel)
+	if model := getModel(p.SubagentModel); model != "" {
+		fmt.Fprintf(&buf, "export CLAUDE_CODE_SUBAGENT_MODEL=%q\n", model)
 	} else {
 		buf.WriteString("unset CLAUDE_CODE_SUBAGENT_MODEL\n")
 	}
@@ -229,5 +138,5 @@ func (p *Provider) ToShellExports() string {
 	fmt.Fprintf(&buf, "export API_TIMEOUT_MS=%d\n", 6000000)
 	buf.WriteString("export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1\n")
 
-	return buf.String()
+	return buf.String(), nil
 }

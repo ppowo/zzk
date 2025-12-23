@@ -26,16 +26,22 @@ func EnvFilePath() string {
 	return filepath.Join(home, ".config", "zzk", "claude-env.sh")
 }
 
-// WriteEnvFile writes the provider configuration to the env file
-func WriteEnvFile(provider Provider) error {
+// WriteEnvFile writes the provider configuration to the env file.
+// The templateID is used to look up the base URL from the template registry.
+func WriteEnvFile(templateID string, provider Provider) error {
 	if err := EnsureConfigDir(); err != nil {
+		return err
+	}
+
+	exports, err := provider.ToShellExports(templateID)
+	if err != nil {
 		return err
 	}
 
 	var buf bytes.Buffer
 	buf.WriteString("# Managed by zzk - do not edit manually\n")
 	buf.WriteString("# Generated for Claude Code provider configuration\n\n")
-	buf.WriteString(provider.ToShellExports())
+	buf.WriteString(exports)
 
 	return fileutil.AtomicWrite(EnvFilePath(), buf.Bytes(), 0600)
 }
@@ -169,7 +175,7 @@ func ShowSetupInstructions() {
 	rcFile := GetRCFilePath(shell)
 	sourceLine := GetSourceLine()
 
-	fmt.Println("\n⚠️  One-time setup required:")
+	fmt.Println("\nOne-time setup required:")
 	fmt.Println("Add this line to your shell configuration file:")
 	fmt.Printf("\n  %s\n\n", sourceLine)
 
@@ -197,7 +203,7 @@ func GetReloadInstructions() string {
 		rcFile = "your shell config file"
 	}
 
-	return fmt.Sprintf(`⚠️  ACTION REQUIRED: Reload your shell to apply changes
+	return fmt.Sprintf(`ACTION REQUIRED: Reload your shell to apply changes
 
 Run this command:
   source %s`, rcFile)
@@ -226,12 +232,12 @@ func ResetToOfficialAPI() error {
 	}
 
 	if wasActive != "" {
-		fmt.Printf("✓ Cleared active provider: %s\n", wasActive)
+		fmt.Printf("Cleared active provider: %s\n", wasActive)
 	} else {
-		fmt.Println("✓ No active provider to clear")
+		fmt.Println("No active provider to clear")
 	}
 
-	fmt.Println("✓ Reset to official Anthropic API")
+	fmt.Println("Reset to official Anthropic API")
 	fmt.Println(GetReloadInstructions())
 
 	// Check if RC file is set up
@@ -244,7 +250,7 @@ func ResetToOfficialAPI() error {
 
 	if !isSetup {
 		// One-time setup needed
-		fmt.Println("\n⚠️  One-time setup: Add this line to your", rcFile)
+		fmt.Println("\nOne-time setup: Add this line to your", rcFile)
 		fmt.Printf("  [ -f %s ] && source %s\n", EnvFilePath(), EnvFilePath())
 		fmt.Println("\nThen reload your shell.")
 	}
@@ -252,11 +258,17 @@ func ResetToOfficialAPI() error {
 	return nil
 }
 
-// ReloadClaudeEnvironment reloads the Claude environment when a provider is edited.
+// ReloadClaudeEnvironment reloads the Claude environment when a provider is activated.
 // It writes the env file, checks shell sync, and shows warnings if needed.
-func ReloadClaudeEnvironment(providerName string, provider Provider) error {
+func ReloadClaudeEnvironment(templateID string, provider Provider) error {
+	// Get template for display
+	tmpl, ok := GetTemplate(templateID)
+	if !ok {
+		return fmt.Errorf("unknown provider template: %s", templateID)
+	}
+
 	// Write env file
-	if err := WriteEnvFile(provider); err != nil {
+	if err := WriteEnvFile(templateID, provider); err != nil {
 		return fmt.Errorf("failed to write env file: %w", err)
 	}
 
@@ -266,7 +278,7 @@ func ReloadClaudeEnvironment(providerName string, provider Provider) error {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	if err := config.SetActive(providerName); err != nil {
+	if err := config.SetActive(templateID); err != nil {
 		return fmt.Errorf("failed to set active provider: %w", err)
 	}
 
@@ -274,8 +286,8 @@ func ReloadClaudeEnvironment(providerName string, provider Provider) error {
 		return fmt.Errorf("failed to update config: %w", err)
 	}
 
-	fmt.Printf("✓ Switched to provider: %s\n", providerName)
-	fmt.Printf("  Base URL: %s\n", provider.BaseURL)
+	fmt.Printf("Switched to provider: %s\n", tmpl.Name)
+	fmt.Printf("  Base URL: %s\n", tmpl.BaseURL)
 	fmt.Println(GetReloadInstructions())
 
 	// Check if RC file is set up
@@ -288,7 +300,7 @@ func ReloadClaudeEnvironment(providerName string, provider Provider) error {
 
 	if !isSetup {
 		// One-time setup needed
-		fmt.Println("\n⚠️  One-time setup: Add this line to your", rcFile)
+		fmt.Println("\nOne-time setup: Add this line to your", rcFile)
 		fmt.Printf("  [ -f %s ] && source %s\n", EnvFilePath(), EnvFilePath())
 		fmt.Println("\nThen reload your shell.")
 	}

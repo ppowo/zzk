@@ -2,19 +2,21 @@ package cmd
 
 import (
 	"fmt"
-	"sort"
 
 	"github.com/ppowo/zzk/internal/claude"
 	"github.com/spf13/cobra"
 )
 
-
 var claudeLsCmd = &cobra.Command{
-	Use:   "ls",
-	Short: "List all Claude API providers",
-	Long: `List all configured Claude API providers.
+	Use:     "ls",
+	Aliases: []string{"list"},
+	Short:   "List all Claude API providers",
+	Long: `List all available Claude API providers and their configuration status.
 
-Shows provider names with an asterisk (*) marking the currently active provider.
+Shows all provider templates with:
+  * - currently active provider
+  + - configured (has API key)
+  - - not configured
 
 Example:
   zzk claude ls`,
@@ -25,37 +27,47 @@ Example:
 			return fmt.Errorf("failed to load config: %w", err)
 		}
 
-		if len(config.Providers) == 0 {
-			fmt.Println("No providers configured.")
-			fmt.Println("\nTo add a provider, run:")
-			fmt.Println("  zzk claude add <provider-name>")
-			return nil
-		}
-
-		// Sort provider names for consistent output
-		names := make([]string, 0, len(config.Providers))
-		for name := range config.Providers {
-			names = append(names, name)
-		}
-		sort.Strings(names)
-
-		// Show active provider in config
+		// Show active provider
 		if config.Active != "" {
-			fmt.Printf("Active: %s\n\n", config.Active)
+			if tmpl, ok := claude.GetTemplate(config.Active); ok {
+				fmt.Printf("Active: %s (%s)\n\n", tmpl.Name, tmpl.BaseURL)
+			} else {
+				fmt.Printf("Active: %s\n\n", config.Active)
+			}
 		} else {
-			fmt.Println("Active: none (using official Anthropic API)")
+			fmt.Println("Active: Official Anthropic API")
+			fmt.Println()
 		}
 
-		// Show all providers list
-		fmt.Printf("Providers (%d):\n", len(config.Providers))
-		for _, name := range names {
-			provider := config.Providers[name]
-			marker := " "
-			if name == config.Active {
-				marker = "*"
+		// Show all templates with status
+		fmt.Println("Providers:")
+		for _, tmpl := range claude.ListTemplates() {
+			marker := "-"
+			status := "not configured"
+
+			if config.HasProvider(tmpl.ID) {
+				marker = "+"
+				status = "configured"
+				if tmpl.ID == config.Active {
+					marker = "*"
+					status = "active"
+				}
 			}
-			fmt.Printf("  %s %s\n", marker, name)
-			fmt.Printf("    %s\n", provider.BaseURL)
+
+			fmt.Printf("  %s %-12s %-15s %s\n", marker, tmpl.ID, "("+status+")", tmpl.BaseURL)
+		}
+
+		// Show help for unconfigured providers
+		var unconfigured []string
+		for _, tmpl := range claude.ListTemplates() {
+			if !config.HasProvider(tmpl.ID) {
+				unconfigured = append(unconfigured, tmpl.ID)
+			}
+		}
+
+		if len(unconfigured) > 0 {
+			fmt.Println("\nTo configure a provider:")
+			fmt.Printf("  zzk claude set <provider>\n")
 		}
 
 		return nil
