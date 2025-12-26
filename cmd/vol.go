@@ -2,9 +2,9 @@ package cmd
 
 import (
 	"fmt"
-	"runtime"
 	"strconv"
 
+	"github.com/itchyny/volume-go"
 	"github.com/spf13/cobra"
 )
 
@@ -18,11 +18,7 @@ Examples:
   zzk vol 50    # Set volume to 50`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if runtime.GOOS == "windows" {
-			return fmt.Errorf("volume control is not supported on Windows")
-		}
-
-		volume := 17 // Default volume
+		targetVol := 17 // Default volume
 		isDefault := true
 
 		if len(args) > 0 {
@@ -33,26 +29,26 @@ Examples:
 			if v < 0 || v > 100 {
 				return fmt.Errorf("volume must be between 0 and 100")
 			}
-			volume = v
+			targetVol = v
 			isDefault = false
 		}
 
-		previousVolume, err := SetVolume(volume)
-		if err != nil {
+		previousVolume, _ := volume.GetVolume()
+		if err := volume.SetVolume(targetVol); err != nil {
 			return fmt.Errorf("failed to set volume: %w", err)
 		}
 
 		if isDefault {
 			if previousVolume >= 0 {
-				fmt.Printf("Volume set to %d (default, was %d)\n", volume, previousVolume)
+				fmt.Printf("Volume set to %d (default, was %d)\n", targetVol, previousVolume)
 			} else {
-				fmt.Printf("Volume set to %d (default)\n", volume)
+				fmt.Printf("Volume set to %d (default)\n", targetVol)
 			}
 		} else {
 			if previousVolume >= 0 {
-				fmt.Printf("Volume set to %d (was %d)\n", volume, previousVolume)
+				fmt.Printf("Volume set to %d (was %d)\n", targetVol, previousVolume)
 			} else {
-				fmt.Printf("Volume set to %d\n", volume)
+				fmt.Printf("Volume set to %d\n", targetVol)
 			}
 		}
 
